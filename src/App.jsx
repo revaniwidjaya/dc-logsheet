@@ -9,8 +9,8 @@ const INITIAL_STATE = {
     petugas: "",
   },
   ups: [
-    { id: 1, label: "UPS A", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", temperature: "", status: "Normal", catatan: "" },
-    { id: 2, label: "UPS B", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", temperature: "", status: "Normal", catatan: "" },
+    { id: 1, label: "UPS A", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", backupTime: "", temperature: "", status: "Normal", catatan: "" },
+    { id: 2, label: "UPS B", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", backupTime: "", temperature: "", status: "Normal", catatan: "" },
   ],
   ac: [
     { id: 1, label: "AC 1 (Precision)", suhuSetting: "", suhuAktual: "", humidity: "", status: "Normal", catatan: "" },
@@ -18,9 +18,9 @@ const INITIAL_STATE = {
     { id: 3, label: "AC 3 (Precision)", suhuSetting: "", suhuAktual: "", humidity: "", status: "Normal", catatan: "" },
   ],
   genset: [
-    { id: 1, label: "Genset DC 01", fuelLevel: "", batteryVoltage: "", runningHours: "", oilPressure: "", coolantTemp: "", status: "Standby", catatan: "" },
-    { id: 2, label: "Genset DC 02", fuelLevel: "", batteryVoltage: "", runningHours: "", oilPressure: "", coolantTemp: "", status: "Standby", catatan: "" },
-    { id: 3, label: "Genset DC 03", fuelLevel: "", batteryVoltage: "", runningHours: "", oilPressure: "", coolantTemp: "", status: "Standby", catatan: "" },
+    { id: 1, label: "Genset DC 01", mode: "Auto", fuelLevel: "", batteryVoltage: "", runningHours: "", oilPressure: "", coolantTemp: "", status: "Standby", catatan: "" },
+    { id: 2, label: "Genset DC 02", mode: "Auto", fuelLevel: "", batteryVoltage: "", runningHours: "", oilPressure: "", coolantTemp: "", status: "Standby", catatan: "" },
+    { id: 3, label: "Genset DC 03", mode: "Auto", fuelLevel: "", batteryVoltage: "", runningHours: "", oilPressure: "", coolantTemp: "", status: "Standby", catatan: "" },
   ],
   fss: {
     status: "normal", // "normal" | "anomali"
@@ -54,7 +54,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function Field({ label, unit, value, onChange, type = "number", placeholder, style }) {
+function Field({ label, unit, value, onChange, type = "number", placeholder, style, hint }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3, ...style }}>
       <label style={{ fontSize: 12, color: "#546e7a", fontWeight: 500 }}>{label}</label>
@@ -74,11 +74,12 @@ function Field({ label, unit, value, onChange, type = "number", placeholder, sty
         />
         {unit && <span style={{ fontSize: 12, color: "#90a4ae", whiteSpace: "nowrap" }}>{unit}</span>}
       </div>
+      {hint && <span style={{ fontSize: 10, color: "#b0bec5", lineHeight: 1.2 }}>{hint}</span>}
     </div>
   );
 }
 
-function Select({ label, value, onChange, options }) {
+function Select({ label, value, onChange, options, hint }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <label style={{ fontSize: 12, color: "#546e7a", fontWeight: 500 }}>{label}</label>
@@ -92,6 +93,7 @@ function Select({ label, value, onChange, options }) {
       >
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
+      {hint && <span style={{ fontSize: 10, color: "#b0bec5", lineHeight: 1.2 }}>{hint}</span>}
     </div>
   );
 }
@@ -149,6 +151,7 @@ function PrintView({ data }) {
               <div><span style={cellLabel}>Output Voltage</span><br /><span style={cellValue}>{ups.outputVoltage || "—"} V</span></div>
               <div><span style={cellLabel}>Battery Level</span><br /><span style={cellValue}>{ups.batteryLevel || "—"} %</span></div>
               <div><span style={cellLabel}>Load</span><br /><span style={cellValue}>{ups.loadPercent || "—"} %</span></div>
+              <div><span style={cellLabel}>Backup Time</span><br /><span style={cellValue}>{ups.backupTime || "—"} min</span></div>
               <div><span style={cellLabel}>Suhu UPS</span><br /><span style={cellValue}>{ups.temperature || "—"} °C</span></div>
               <div><span style={cellLabel}>Status</span><br /><StatusBadge status={ups.status} /></div>
             </div>
@@ -182,6 +185,7 @@ function PrintView({ data }) {
             <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{g.label}</div>
             <div style={{ ...gridStyle, marginTop: 2 }}>
               <div><span style={cellLabel}>Fuel Level</span><br /><span style={cellValue}>{g.fuelLevel || "—"} %</span></div>
+              <div><span style={cellLabel}>Mode</span><br /><span style={cellValue}>{g.mode || "—"}</span></div>
               <div><span style={cellLabel}>Batt. Voltage</span><br /><span style={cellValue}>{g.batteryVoltage || "—"} V</span></div>
               <div><span style={cellLabel}>Running Hours</span><br /><span style={cellValue}>{g.runningHours || "—"} h</span></div>
               <div><span style={cellLabel}>Oil Pressure</span><br /><span style={cellValue}>{g.oilPressure || "—"} psi</span></div>
@@ -383,12 +387,13 @@ export default function DCLogsheet() {
             <div key={ups.id} style={{ marginBottom: i < data.ups.length - 1 ? 14 : 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#37474f" }}>{ups.label}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Select label="Status" value={ups.status} onChange={(v) => updateUPS(i, "status", v)} options={["Normal", "Bypass", "Battery", "Off"]} hint="Standar: Online (bukan Bypass/Battery)" />
+                <Field label="Battery Level" unit="%" value={ups.batteryLevel} onChange={(v) => updateUPS(i, "batteryLevel", v)} hint="Standar: ≥ 96%" />
+                <Field label="Load" unit="%" value={ups.loadPercent} onChange={(v) => updateUPS(i, "loadPercent", v)} hint="Standar: < 80% kapasitas" />
+                <Field label="Backup Time" unit="min" value={ups.backupTime} onChange={(v) => updateUPS(i, "backupTime", v)} hint="Standar: > 10 menit" />
                 <Field label="Input Voltage" unit="V" value={ups.inputVoltage} onChange={(v) => updateUPS(i, "inputVoltage", v)} />
                 <Field label="Output Voltage" unit="V" value={ups.outputVoltage} onChange={(v) => updateUPS(i, "outputVoltage", v)} />
-                <Field label="Battery Level" unit="%" value={ups.batteryLevel} onChange={(v) => updateUPS(i, "batteryLevel", v)} />
-                <Field label="Load" unit="%" value={ups.loadPercent} onChange={(v) => updateUPS(i, "loadPercent", v)} />
                 <Field label="Suhu UPS" unit="°C" value={ups.temperature} onChange={(v) => updateUPS(i, "temperature", v)} />
-                <Select label="Status" value={ups.status} onChange={(v) => updateUPS(i, "status", v)} options={STATUS_OPTIONS} />
               </div>
               <div style={{ marginTop: 6 }}>
                 <Field label="Catatan" type="text" value={ups.catatan} onChange={(v) => updateUPS(i, "catatan", v)} placeholder="Opsional" />
@@ -403,10 +408,10 @@ export default function DCLogsheet() {
             <div key={ac.id} style={{ marginBottom: i < data.ac.length - 1 ? 14 : 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#37474f" }}>{ac.label}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Field label="Suhu Setting" unit="°C" value={ac.suhuSetting} onChange={(v) => updateAC(i, "suhuSetting", v)} />
-                <Field label="Suhu Aktual" unit="°C" value={ac.suhuAktual} onChange={(v) => updateAC(i, "suhuAktual", v)} />
-                <Field label="Humidity" unit="%" value={ac.humidity} onChange={(v) => updateAC(i, "humidity", v)} />
-                <Select label="Status" value={ac.status} onChange={(v) => updateAC(i, "status", v)} options={STATUS_OPTIONS} />
+                <Field label="Suhu Setting" unit="°C" value={ac.suhuSetting} onChange={(v) => updateAC(i, "suhuSetting", v)} hint="Standar: 16°C – 20°C" />
+                <Field label="Suhu Aktual" unit="°C" value={ac.suhuAktual} onChange={(v) => updateAC(i, "suhuAktual", v)} hint="Standar: < 27°C" />
+                <Field label="Humidity" unit="%" value={ac.humidity} onChange={(v) => updateAC(i, "humidity", v)} hint="Standar: 40% – 60% RH" />
+                <Select label="Status" value={ac.status} onChange={(v) => updateAC(i, "status", v)} options={STATUS_OPTIONS} hint="Min. 1 unit harus ON" />
               </div>
               <div style={{ marginTop: 6 }}>
                 <Field label="Catatan" type="text" value={ac.catatan} onChange={(v) => updateAC(i, "catatan", v)} placeholder="Opsional" />
@@ -421,12 +426,13 @@ export default function DCLogsheet() {
             <div key={g.id} style={{ marginBottom: i < data.genset.length - 1 ? 14 : 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#37474f" }}>{g.label}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Field label="Fuel Level" unit="%" value={g.fuelLevel} onChange={(v) => updateGenset(i, "fuelLevel", v)} />
-                <Field label="Battery Voltage" unit="V" value={g.batteryVoltage} onChange={(v) => updateGenset(i, "batteryVoltage", v)} />
-                <Field label="Running Hours" unit="h" value={g.runningHours} onChange={(v) => updateGenset(i, "runningHours", v)} />
-                <Field label="Oil Pressure" unit="psi" value={g.oilPressure} onChange={(v) => updateGenset(i, "oilPressure", v)} />
-                <Field label="Coolant Temp" unit="°C" value={g.coolantTemp} onChange={(v) => updateGenset(i, "coolantTemp", v)} />
                 <Select label="Status" value={g.status} onChange={(v) => updateGenset(i, "status", v)} options={GENSET_STATUS} />
+                <Select label="Mode" value={g.mode} onChange={(v) => updateGenset(i, "mode", v)} options={["Auto", "Manual"]} hint="Standar: Auto" />
+                <Field label="Fuel Level" unit="%" value={g.fuelLevel} onChange={(v) => updateGenset(i, "fuelLevel", v)} hint="Isi ulang jika < 25%" />
+                <Field label="Battery Voltage" unit="V" value={g.batteryVoltage} onChange={(v) => updateGenset(i, "batteryVoltage", v)} hint="Standar: ≥ 12.5V" />
+                <Field label="Running Hours" unit="h" value={g.runningHours} onChange={(v) => updateGenset(i, "runningHours", v)} hint="Maintenance per 250–500 jam" />
+                <Field label="Oil Pressure" value={g.oilPressure} onChange={(v) => updateGenset(i, "oilPressure", v)} hint="L / M / H (normal: M)" />
+                <Field label="Coolant Temp" unit="°C" value={g.coolantTemp} onChange={(v) => updateGenset(i, "coolantTemp", v)} hint="70–90°C normal; maks 105°C" />
               </div>
               <div style={{ marginTop: 6 }}>
                 <Field label="Catatan" type="text" value={g.catatan} onChange={(v) => updateGenset(i, "catatan", v)} placeholder="Opsional" />
