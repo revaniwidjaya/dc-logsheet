@@ -9,8 +9,8 @@ const INITIAL_STATE = {
     petugas: "",
   },
   ups: [
-    { id: 1, label: "UPS A", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", backupTime: "", temperature: "", status: "Normal", catatan: "" },
-    { id: 2, label: "UPS B", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", backupTime: "", temperature: "", status: "Normal", catatan: "" },
+    { id: 1, label: "UPS A", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", backupTime: "", temperature: "", status: "Online", catatan: "" },
+    { id: 2, label: "UPS B", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", backupTime: "", temperature: "", status: "Online", catatan: "" },
   ],
   ac: [
     { id: 1, label: "AC 1 (Precision)", suhuSetting: "", suhuAktual: "", humidity: "", status: "Normal", catatan: "" },
@@ -37,6 +37,7 @@ const STAFF = ["Ishmat", "Ajeng", "Ershad", "Revani", "Julda", "Rinaldi"];
 function StatusBadge({ status }) {
   const colors = {
     Normal: { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" },
+    Online: { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" },
     "Semua Normal": { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" },
     "Ada Anomali": { bg: "#ffebee", color: "#c62828", border: "#ef9a9a" },
     Standby: { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" },
@@ -387,7 +388,7 @@ export default function DCLogsheet() {
             <div key={ups.id} style={{ marginBottom: i < data.ups.length - 1 ? 14 : 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#37474f" }}>{ups.label}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Select label="Status" value={ups.status} onChange={(v) => updateUPS(i, "status", v)} options={["Normal", "Bypass", "Battery", "Off"]} hint="Standar: Online (bukan Bypass/Battery)" />
+                <Select label="Status" value={ups.status} onChange={(v) => updateUPS(i, "status", v)} options={["Online", "Battery", "Bypass", "Off"]} hint="Standar: Online (bukan Bypass/Battery)" />
                 <Field label="Battery Level" unit="%" value={ups.batteryLevel} onChange={(v) => updateUPS(i, "batteryLevel", v)} hint="Standar: ≥ 96%" />
                 <Field label="Load" unit="%" value={ups.loadPercent} onChange={(v) => updateUPS(i, "loadPercent", v)} hint="Standar: < 80% kapasitas" />
                 <Field label="Backup Time" unit="min" value={ups.backupTime} onChange={(v) => updateUPS(i, "backupTime", v)} hint="Standar: > 10 menit" />
