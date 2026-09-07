@@ -293,10 +293,15 @@ export default function DCLogsheet() {
   };
 
   // Save history entry
-  const handleSave = () => {
+    const handleSave = () => {
     const key = `logsheet:${data.meta.tanggal}-${data.meta.shift}-${Date.now()}`;
     try {
       localStorage.setItem(key, JSON.stringify(data));
+      // Kirim ke Google Sheets
+      fetch("https://script.google.com/macros/s/AKfycbxVsupxFAAdx-YznfAwUdTHPDgh13iyB9KxWhqsyGcZw25c40pirrET5MZ_th-DhVxKmw/exec", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }).catch(() => {});
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch { alert("Gagal menyimpan."); }
