@@ -8,15 +8,10 @@ const INITIAL_STATE = {
     shift: "Pagi",
     petugas: "",
   },
-  ups: {
-    inputVoltage: "",
-    outputVoltage: "",
-    batteryLevel: "",
-    loadPercent: "",
-    temperature: "",
-    status: "Normal",
-    catatan: "",
-  },
+  ups: [
+    { id: 1, label: "UPS A", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", temperature: "", status: "Normal", catatan: "" },
+    { id: 2, label: "UPS B", inputVoltage: "", outputVoltage: "", batteryLevel: "", loadPercent: "", temperature: "", status: "Normal", catatan: "" },
+  ],
   ac: [
     { id: 1, label: "AC 1 (Precision)", suhuSetting: "", suhuAktual: "", humidity: "", status: "Normal", catatan: "" },
     { id: 2, label: "AC 2 (Precision)", suhuSetting: "", suhuAktual: "", humidity: "", status: "Normal", catatan: "" },
@@ -146,15 +141,20 @@ function PrintView({ data }) {
       {/* UPS */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#1565c0", borderBottom: "1px solid #e0e0e0", paddingBottom: 4, marginBottom: 6 }}>⚡ UPS</div>
-        <div style={gridStyle}>
-          <div><span style={cellLabel}>Input Voltage</span><br /><span style={cellValue}>{data.ups.inputVoltage || "—"} V</span></div>
-          <div><span style={cellLabel}>Output Voltage</span><br /><span style={cellValue}>{data.ups.outputVoltage || "—"} V</span></div>
-          <div><span style={cellLabel}>Battery Level</span><br /><span style={cellValue}>{data.ups.batteryLevel || "—"} %</span></div>
-          <div><span style={cellLabel}>Load</span><br /><span style={cellValue}>{data.ups.loadPercent || "—"} %</span></div>
-          <div><span style={cellLabel}>Suhu UPS</span><br /><span style={cellValue}>{data.ups.temperature || "—"} °C</span></div>
-          <div><span style={cellLabel}>Status</span><br /><StatusBadge status={data.ups.status} /></div>
-        </div>
-        {data.ups.catatan && <div style={{ fontSize: 12, marginTop: 4, color: "#546e7a" }}>Catatan: {data.ups.catatan}</div>}
+        {data.ups.map((ups) => (
+          <div key={ups.id} style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{ups.label}</div>
+            <div style={{ ...gridStyle, marginTop: 2 }}>
+              <div><span style={cellLabel}>Input Voltage</span><br /><span style={cellValue}>{ups.inputVoltage || "—"} V</span></div>
+              <div><span style={cellLabel}>Output Voltage</span><br /><span style={cellValue}>{ups.outputVoltage || "—"} V</span></div>
+              <div><span style={cellLabel}>Battery Level</span><br /><span style={cellValue}>{ups.batteryLevel || "—"} %</span></div>
+              <div><span style={cellLabel}>Load</span><br /><span style={cellValue}>{ups.loadPercent || "—"} %</span></div>
+              <div><span style={cellLabel}>Suhu UPS</span><br /><span style={cellValue}>{ups.temperature || "—"} °C</span></div>
+              <div><span style={cellLabel}>Status</span><br /><StatusBadge status={ups.status} /></div>
+            </div>
+            {ups.catatan && <div style={{ fontSize: 12, marginTop: 2, color: "#546e7a" }}>Catatan: {ups.catatan}</div>}
+          </div>
+        ))}
       </div>
 
       {/* AC */}
@@ -233,6 +233,13 @@ export default function DCLogsheet() {
       const raw = localStorage.getItem("logsheet-draft");
       if (raw) {
         const parsed = JSON.parse(raw);
+        // Migrate: if saved UPS is single object (not array), convert to array
+        if (parsed.ups && !Array.isArray(parsed.ups)) {
+          parsed.ups = [
+            { id: 1, label: "UPS A", ...parsed.ups },
+            { ...INITIAL_STATE.ups[1] },
+          ];
+        }
         // Migrate: if saved draft has fewer ACs than current template, pad with defaults
         if (parsed.ac && parsed.ac.length < INITIAL_STATE.ac.length) {
           for (let i = parsed.ac.length; i < INITIAL_STATE.ac.length; i++) {
@@ -259,7 +266,11 @@ export default function DCLogsheet() {
   }, [data]);
 
   const updateMeta = (key, val) => setData((d) => ({ ...d, meta: { ...d.meta, [key]: val } }));
-  const updateUPS = (key, val) => setData((d) => ({ ...d, ups: { ...d.ups, [key]: val } }));
+  const updateUPS = (idx, key, val) => setData((d) => {
+    const ups = [...d.ups];
+    ups[idx] = { ...ups[idx], [key]: val };
+    return { ...d, ups };
+  });
   const updateAC = (idx, key, val) => setData((d) => {
     const ac = [...d.ac];
     ac[idx] = { ...ac[idx], [key]: val };
@@ -293,15 +304,10 @@ export default function DCLogsheet() {
   };
 
   // Save history entry
-    const handleSave = () => {
+  const handleSave = () => {
     const key = `logsheet:${data.meta.tanggal}-${data.meta.shift}-${Date.now()}`;
     try {
       localStorage.setItem(key, JSON.stringify(data));
-      // Kirim ke Google Sheets
-      fetch("https://script.google.com/macros/s/AKfycbxVsupxFAAdx-YznfAwUdTHPDgh13iyB9KxWhqsyGcZw25c40pirrET5MZ_th-DhVxKmw/exec", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }).catch(() => {});
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch { alert("Gagal menyimpan."); }
@@ -373,17 +379,22 @@ export default function DCLogsheet() {
 
         {/* UPS */}
         <Section title="UPS" icon={<Zap size={16} color="#f9a825" />}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Field label="Input Voltage" unit="V" value={data.ups.inputVoltage} onChange={(v) => updateUPS("inputVoltage", v)} />
-            <Field label="Output Voltage" unit="V" value={data.ups.outputVoltage} onChange={(v) => updateUPS("outputVoltage", v)} />
-            <Field label="Battery Level" unit="%" value={data.ups.batteryLevel} onChange={(v) => updateUPS("batteryLevel", v)} />
-            <Field label="Load" unit="%" value={data.ups.loadPercent} onChange={(v) => updateUPS("loadPercent", v)} />
-            <Field label="Suhu UPS" unit="°C" value={data.ups.temperature} onChange={(v) => updateUPS("temperature", v)} />
-            <Select label="Status" value={data.ups.status} onChange={(v) => updateUPS("status", v)} options={STATUS_OPTIONS} />
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <Field label="Catatan" type="text" value={data.ups.catatan} onChange={(v) => updateUPS("catatan", v)} placeholder="Opsional" />
-          </div>
+          {data.ups.map((ups, i) => (
+            <div key={ups.id} style={{ marginBottom: i < data.ups.length - 1 ? 14 : 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#37474f" }}>{ups.label}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Field label="Input Voltage" unit="V" value={ups.inputVoltage} onChange={(v) => updateUPS(i, "inputVoltage", v)} />
+                <Field label="Output Voltage" unit="V" value={ups.outputVoltage} onChange={(v) => updateUPS(i, "outputVoltage", v)} />
+                <Field label="Battery Level" unit="%" value={ups.batteryLevel} onChange={(v) => updateUPS(i, "batteryLevel", v)} />
+                <Field label="Load" unit="%" value={ups.loadPercent} onChange={(v) => updateUPS(i, "loadPercent", v)} />
+                <Field label="Suhu UPS" unit="°C" value={ups.temperature} onChange={(v) => updateUPS(i, "temperature", v)} />
+                <Select label="Status" value={ups.status} onChange={(v) => updateUPS(i, "status", v)} options={STATUS_OPTIONS} />
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <Field label="Catatan" type="text" value={ups.catatan} onChange={(v) => updateUPS(i, "catatan", v)} placeholder="Opsional" />
+              </div>
+            </div>
+          ))}
         </Section>
 
         {/* AC */}
